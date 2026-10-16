@@ -1,16 +1,8 @@
-"""Стековая машина для выражений в постфиксной нотации."""
-
-
 class StackMachineError(Exception):
     """Ошибка вычисления с понятным для человека сообщением."""
 
 
-OPERATORS = {
-    "+": lambda x, y: x + y,
-    "-": lambda x, y: x - y,
-    "*": lambda x, y: x * y,
-    "/": lambda x, y: x / y,
-}
+OPERATORS = ("+", "-", "*", "/")
 
 
 def parse_number(token):
@@ -24,7 +16,7 @@ def parse_number(token):
     except ValueError:
         raise StackMachineError(
             f"не понимаю '{token}': это не число и не операция (+ - * / ~)"
-        ) from None
+        )
 
 
 def normalize(value):
@@ -59,39 +51,45 @@ class StackMachine:
 
     def _binary(self, token):
         x, y = self._pop_two(token)
-        if token == "/" and y == 0:
-            raise StackMachineError(f"деление на ноль: {x} / {y}")
-        self.stack.append(normalize(OPERATORS[token](x, y)))
+        if token == "+":
+            result = x + y
+        elif token == "-":
+            result = x - y
+        elif token == "*":
+            result = x * y
+        else:
+            if y == 0:
+                raise StackMachineError(f"деление на ноль: {x} / {y}")
+            result = x / y
+        self.stack.append(normalize(result))
 
     def _tilde(self):
         x, y = self._pop_two("~")
         if x != 0 and y != 0:
             self.stack.append(abs(x - y))
         else:
-            # сумма всего стека вместе с извлечёнными операндами, в квадрате
-            total = sum(self.stack) + x + y
+            total = sum(self.stack) + x + y # сумма всего стека вместе с извлечёнными операндами, в квадрате
             self.stack = [normalize(total ** 2)]
 
 
-def evaluate(expression, on_step=None):
-    """Вычислить выражение и вернуть результат.
+def evaluate(expression):
+    """Вычислить выражение.
 
-    on_step(token, stack) вызывается после каждого шага -
-    так можно вывести состояние стека.
+    Возвращает результат и список шагов: (токен, стек после него).
     """
     tokens = expression.split()
     if not tokens:
         raise StackMachineError("выражение пустое, вычислять нечего")
 
     machine = StackMachine()
+    steps = []
     for token in tokens:
         machine.step(token)
-        if on_step:
-            on_step(token, list(machine.stack))
+        steps.append((token, list(machine.stack)))
 
     if len(machine.stack) != 1:
         raise StackMachineError(
             f"в конце в стеке должно остаться одно число, а осталось {machine.stack}. "
             "Похоже, не хватает операции"
         )
-    return machine.stack[0]
+    return machine.stack[0], steps

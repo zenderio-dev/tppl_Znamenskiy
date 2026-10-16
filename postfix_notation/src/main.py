@@ -22,17 +22,7 @@ HINT = (
 )
 
 
-def format_stack(stack):
-    return "[" + ", ".join(str(value) for value in stack) + "]"
-
-
-def print_step(token, stack):
-    print(f"  {token:>6}  ->  {format_stack(stack)}")
-
-
-def main(argv=None):
-    args = sys.argv[1:] if argv is None else argv
-
+def main(args):
     if not args:
         print("Вы не передали выражение - покажу, как мной пользоваться.\n")
         print(USAGE)
@@ -42,17 +32,18 @@ def main(argv=None):
         return 0
 
     expression = " ".join(args)
-    print(f"Вычисляю: {expression}")
     try:
-        result = evaluate(expression, on_step=print_step)
+        result, steps = evaluate(expression)
     except StackMachineError as error:
         print(f"Не получилось вычислить: {error}", file=sys.stderr)
         print(HINT, file=sys.stderr)
         return 1
 
+    for token, stack in steps:
+        print(f"{token}  ->  {stack}")
     print(f"{expression} = {result}")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))
