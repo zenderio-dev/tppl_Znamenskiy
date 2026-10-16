@@ -34,7 +34,9 @@ class StackMachine:
 
     def step(self, token):
         """Обработать один токен: число кладём в стек, операцию выполняем."""
-        if token in OPERATORS:
+        if token == "~":
+            self._tilde()
+        elif token in OPERATORS:
             self._binary(token)
         else:
             self.stack.append(parse_number(token))
@@ -45,6 +47,16 @@ class StackMachine:
         if token == "/" and y == 0:
             raise StackMachineError(f"деление на ноль: {x} / {y}")
         self.stack.append(normalize(OPERATORS[token](x, y)))
+
+    def _tilde(self):
+        y = self.stack.pop()
+        x = self.stack.pop()
+        if x != 0 and y != 0:
+            self.stack.append(abs(x - y))
+        else:
+            # сумма всего стека вместе с извлечёнными операндами, в квадрате
+            total = sum(self.stack) + x + y
+            self.stack = [normalize(total ** 2)]
 
 
 def evaluate(expression):
