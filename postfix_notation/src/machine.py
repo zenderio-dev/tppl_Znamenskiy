@@ -18,7 +18,13 @@ def parse_number(token):
     try:
         return int(token)
     except ValueError:
+        pass
+    try:
         return float(token)
+    except ValueError:
+        raise StackMachineError(
+            f"не понимаю '{token}': это не число и не операция (+ - * / ~)"
+        ) from None
 
 
 def normalize(value):
@@ -41,16 +47,24 @@ class StackMachine:
         else:
             self.stack.append(parse_number(token))
 
-    def _binary(self, token):
+    def _pop_two(self, token):
+        if len(self.stack) < 2:
+            raise StackMachineError(
+                f"для операции '{token}' нужно два числа, "
+                f"а в стеке сейчас {self.stack}"
+            )
         y = self.stack.pop()
         x = self.stack.pop()
+        return x, y
+
+    def _binary(self, token):
+        x, y = self._pop_two(token)
         if token == "/" and y == 0:
             raise StackMachineError(f"деление на ноль: {x} / {y}")
         self.stack.append(normalize(OPERATORS[token](x, y)))
 
     def _tilde(self):
-        y = self.stack.pop()
-        x = self.stack.pop()
+        x, y = self._pop_two("~")
         if x != 0 and y != 0:
             self.stack.append(abs(x - y))
         else:
@@ -59,9 +73,25 @@ class StackMachine:
             self.stack = [normalize(total ** 2)]
 
 
-def evaluate(expression):
-    """Вычислить выражение и вернуть результат."""
+def evaluate(expression, on_step=None):
+    """Вычислить выражение и вернуть результат.
+
+    on_step(token, stack) вызывается после каждого шага -
+    так можно вывести состояние стека.
+    """
+    tokens = expression.split()
+    if not tokens:
+        raise StackMachineError("выражение пустое, вычислять нечего")
+
     machine = StackMachine()
-    for token in expression.split():
+    for token in tokens:
         machine.step(token)
+        if on_step:
+            on_step(token, list(machine.stack))
+
+    if len(machine.stack) != 1:
+        raise StackMachineError(
+            f"в конце в стеке должно остаться одно число, а осталось {machine.stack}. "
+            "Похоже, не хватает операции"
+        )
     return machine.stack[0]
