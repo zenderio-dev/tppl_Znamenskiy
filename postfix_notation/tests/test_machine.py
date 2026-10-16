@@ -34,10 +34,6 @@ class TestOperators:
     def test_extra_spaces_are_ignored(self):
         assert evaluate("  2   3  + ") == 5
 
-    def test_division_by_zero(self):
-        with pytest.raises(StackMachineError, match="деление на ноль"):
-            evaluate("5 0 /")
-
 
 class TestTilde:
     def test_both_not_zero_gives_abs_difference(self):
@@ -63,6 +59,43 @@ class TestTilde:
 
     def test_both_zero(self):
         assert evaluate("0 0 ~") == 0
+
+
+class TestSteps:
+    def test_on_step_gets_stack_after_each_token(self):
+        steps = []
+        evaluate("3 0 4 ~ 2 ~", on_step=lambda token, stack: steps.append((token, stack)))
+        assert steps == [
+            ("3", [3]),
+            ("0", [3, 0]),
+            ("4", [3, 0, 4]),
+            ("~", [49]),
+            ("2", [49, 2]),
+            ("~", [47]),
+        ]
+
+
+class TestErrors:
+    def test_empty_expression(self):
+        with pytest.raises(StackMachineError, match="пустое"):
+            evaluate("   ")
+
+    def test_unknown_token(self):
+        with pytest.raises(StackMachineError, match="не понимаю 'abc'"):
+            evaluate("2 abc +")
+
+    @pytest.mark.parametrize("expression", ["+", "2 +", "5 ~"])
+    def test_not_enough_operands(self, expression):
+        with pytest.raises(StackMachineError, match="нужно два числа"):
+            evaluate(expression)
+
+    def test_division_by_zero(self):
+        with pytest.raises(StackMachineError, match="деление на ноль"):
+            evaluate("5 0 /")
+
+    def test_too_many_values_left(self):
+        with pytest.raises(StackMachineError, match="не хватает операции"):
+            evaluate("1 2 3 +")
 
 
 class TestHelpers:
