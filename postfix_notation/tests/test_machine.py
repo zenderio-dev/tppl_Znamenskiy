@@ -1,6 +1,14 @@
 import pytest
 
-from src.machine import StackMachineError, evaluate, normalize, parse_number
+from src.machine import StackMachine, StackMachineError, evaluate, normalize, parse_number
+
+
+class TestExamples:
+    def test_first_example(self):
+        assert evaluate("3 0 4 ~ 2 ~") == 47
+
+    def test_second_example(self):
+        assert evaluate("2 2 + 4 - 4 ~ 2 3 * +") == 22
 
 
 class TestOperators:
@@ -29,6 +37,32 @@ class TestOperators:
     def test_division_by_zero(self):
         with pytest.raises(StackMachineError, match="деление на ноль"):
             evaluate("5 0 /")
+
+
+class TestTilde:
+    def test_both_not_zero_gives_abs_difference(self):
+        assert evaluate("2 7 ~") == 5
+        assert evaluate("7 2 ~") == 5
+
+    def test_keeps_rest_of_stack_when_not_zero(self):
+        machine = StackMachine()
+        for token in "1 2 7 ~".split():
+            machine.step(token)
+        assert machine.stack == [1, 5]
+
+    @pytest.mark.parametrize("expression", ["1 2 0 4 ~", "1 2 4 0 ~"])
+    def test_zero_operand_squares_sum_of_stack(self, expression):
+        # (1 + 2 + 0 + 4) ** 2 = 49
+        assert evaluate(expression) == 49
+
+    def test_zero_operand_replaces_whole_stack(self):
+        machine = StackMachine()
+        for token in "1 2 0 4 ~".split():
+            machine.step(token)
+        assert machine.stack == [49]
+
+    def test_both_zero(self):
+        assert evaluate("0 0 ~") == 0
 
 
 class TestHelpers:
